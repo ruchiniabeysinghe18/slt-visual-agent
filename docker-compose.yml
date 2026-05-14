@@ -16,6 +16,7 @@ services:
       - ./uploaded_pdfs:/app/uploaded_pdfs
       - ./logs:/app/logs
       - ./sltaichallange-599b3b8646ad.json:/app/sltaichallange-599b3b8646ad.json:ro
+      - ../wawa-lipsync:/wawa-lipsync:ro
     depends_on:
       mongodb:
         condition: service_healthy

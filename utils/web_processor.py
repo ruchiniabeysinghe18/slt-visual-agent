@@ -10,7 +10,7 @@ from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from dotenv import load_dotenv
 load_dotenv()
 import os
-
+import sys
 from playwright.async_api import async_playwright
 import asyncio
 import pathlib
@@ -273,7 +273,14 @@ def extract_text_from_url(url):
     try:
         # Use ProactorEventLoop explicitly to support subprocess creation on Windows
         # regardless of the global event loop policy set by the main app.
-        loop = asyncio.ProactorEventLoop()
+        # loop = asyncio.ProactorEventLoop()
+        if sys.platform == "win32":
+            loop = asyncio.ProactorEventLoop()
+            asyncio.set_event_loop(loop)
+        else:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
         try:
             extracted_content = loop.run_until_complete(_extract_text_async(url))
         finally:

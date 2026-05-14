@@ -4,11 +4,26 @@ A WhatsApp and web-based AI customer support chatbot built with FastAPI, LangGra
 
 ---
 
+# Conditions
+
+1. Uploading file must be text PDFs, On OCR processing is implimented to support image PDFs
+2. Use chrome web-browser
+4. If run in a VM ,avtar feature may not work  due to missing grafical libraiers and drivers, but chatbot will functional as usual
+---
+
 ## System Requirements
 
 - Docker and Docker Compose installed
 - Port `5001` open (FastAPI app)
 - Port `27017` open if you need external MongoDB access
+
+---
+## Create a project folder
+
+---
+## Clone repos in to the project folder
+1. ai chatbot code : git clone https://github.com/ruchiniabeysinghe18/slt-visual-agent.git
+2. visual avatar : git clone https://github.com/wass08/wawa-lipsync/
 
 ---
 
@@ -27,7 +42,7 @@ DATABASE=SLT_AI_ASSIST
 DB_HOST=localhost        # use "mongodb" when running via Docker Compose
 DB_PORT=27017
 
-# WhatsApp Business API
+# WhatsApp Business API (refer meta developer instructions)
 ACCESS_TOKEN=<whatsapp_permanent_access_token>
 VERSION=v25.0
 PHONE_NUMBER_ID=<whatsapp_phone_number_id>

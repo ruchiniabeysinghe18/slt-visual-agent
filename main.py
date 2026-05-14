@@ -45,10 +45,10 @@ from fastapi import FastAPI,HTTPException,Request,UploadFile,Form,Depends,Respon
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from utils.whatsapp_utills import parse_user_message, send_message, check_send_msg
+from utils.whatsapp_utills import send_message
 from utils.pdf_processor import DocumentKB, PDFProcessor
 from utils.web_processor import save_urls_to_mongodb
-from utils.miscellaneous import remove_key_recursive, is_phone_number, is_sitemap
+from utils.miscellaneous import remove_key_recursive, is_sitemap, is_phone_number
 from bson import ObjectId
 
 import traceback

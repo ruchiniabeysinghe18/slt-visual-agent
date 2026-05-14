@@ -564,7 +564,7 @@ def common_chatbot():
     graph.add_node("validation_node", validation_node)
     graph.add_node("router", router_node)
     graph.add_node("qa_agent", qa_agent_node)
-    graph.add_node("ticketing_agent", booking_agent_node)
+    graph.add_node("booking_agent", booking_agent_node)
     graph.add_node("escalation_check", escalation_agent_node)
     graph.add_node("consultant_agent", consultant_agent_node)
     graph.add_node("end_node", end_node)
@@ -578,14 +578,14 @@ def common_chatbot():
         lambda state: state["next_node"],
         {
             "qa_agent": "qa_agent",
-            "ticketing_agent": "ticketing_agent",
+            "booking_agent": "booking_agent",
             "consultant": "consultant_agent",
             "end": "end_node"
         },
     )
 
     graph.add_edge("qa_agent", "escalation_check")
-    graph.add_edge("ticketing_agent", "escalation_check")
+    graph.add_edge("booking_agent", "escalation_check")
 
     graph.add_conditional_edges(
         "escalation_check",
