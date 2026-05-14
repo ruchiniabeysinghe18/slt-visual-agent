@@ -1,0 +1,16 @@
+/logs
+/DB
+/chroma_store
+*.png
+test.py
+__pycache__
+utils/__pycache__
+*.out
+.env
+NOTE
+*.pdf
+settings.json
+*.png
+*.jpg
+*.json
+/audio_tts

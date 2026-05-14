@@ -1,0 +1,15 @@
+.venv/
+.git/
+.claude/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+logs/
+chroma_store/
+uploaded_pdfs/
+chat_uploads/
+audio_tts/
+avatar_videos/
+*.log

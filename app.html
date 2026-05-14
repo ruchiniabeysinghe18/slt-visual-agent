@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SLTMobitel Chat</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; }
+    .msg-bubble { max-width: 75%; word-break: break-word; }
+    #chat-messages { scroll-behavior: smooth; }
+.user-item.selected { background: #eff6ff; border-left: 3px solid #2563eb; }
+    .user-item { border-left: 3px solid transparent; }
+    .badge { min-width: 1.25rem; height: 1.25rem; font-size: 0.7rem; }
+    .spinner { border: 3px solid #e5e7eb; border-top-color: #2563eb; border-radius: 50%; width: 20px; height: 20px; animation: spin .7s linear infinite; display: inline-block; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse-rec { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.2); opacity: 0.6; } }
+    .mic-recording { animation: pulse-rec 1s ease-in-out infinite; color: #dc2626 !important; }
+  </style>
+</head>
+<body class="bg-gray-100 h-screen overflow-hidden flex flex-col">
+
+<!-- HEADER -->
+<input type="hidden" id="org-id-input" value="001" />
+<input type="hidden" id="api-base-input" value="http://localhost:5001" />
+<header class="bg-white border-b border-gray-200 shadow-sm px-6 py-3 flex items-center">
+  <div class="flex items-center gap-2">
+    <svg class="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.52 3.66 1.42 5.18L2 22l4.82-1.42A9.96 9.96 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/>
+    </svg>
+    <span class="text-xl font-bold"><span class="text-blue-600">SLT</span><span class="text-green-600">Mobitel</span></span>
+  </div>
+  <div class="ml-auto">
+    <a href="/admin" class="flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 transition border border-gray-200 rounded px-3 py-1 hover:border-blue-300">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      Admin
+    </a>
+  </div>
+</header>
+
+<!-- MAIN -->
+<div class="flex flex-1 overflow-hidden">
+
+  <!-- LEFT: User List -->
+  <aside class="w-72 bg-white border-r border-gray-200 flex flex-col">
+    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+      <span class="font-semibold text-gray-700 text-sm">Conversations</span>
+      <button onclick="loadUsers()" title="Refresh" class="text-gray-400 hover:text-blue-600 transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4v5h5M20 20v-5h-5M4 9a8 8 0 0112.9-3.4M20 15a8 8 0 01-12.9 3.4"/></svg>
+      </button>
+    </div>
+    <!-- New Test Chat Button -->
+    <div class="p-3 border-b-2 border-gray-200 shadow-sm flex-shrink-0">
+      <button onclick="openTestChat()" class="w-full bg-green-600 text-white text-sm py-2 rounded hover:bg-green-700 transition font-medium">
+        + New Test Chat
+      </button>
+    </div>
+    <div id="user-list" class="flex-1 overflow-y-auto divide-y divide-gray-100">
+      <div class="p-4 text-sm text-gray-400">Load an Org ID to see users.</div>
+    </div>
+  </aside>
+
+  <!-- CENTER: Chat Panel -->
+  <main class="flex-1 flex flex-col bg-gray-50">
+
+    <!-- Chat Header -->
+    <div class="bg-white border-b border-gray-200 px-5 py-3 flex items-center gap-3" id="chat-header">
+      <div class="flex-1">
+        <div class="font-semibold text-gray-800 text-sm" id="chat-user-label">Select a conversation</div>
+        <div class="text-xs text-gray-400" id="chat-user-sub"></div>
+      </div>
+      <div id="consultant-controls" class="hidden flex items-center gap-2">
+        <span class="text-xs text-gray-500">Consultant Mode</span>
+        <button id="consultant-toggle-btn" onclick="toggleConsultantMode()" class="px-3 py-1 text-xs rounded font-medium transition">--</button>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div id="chat-messages" class="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+      <div class="flex items-center justify-center h-full text-gray-400 text-sm">Select a conversation to view messages</div>
+    </div>
+
+    <!-- Consultant Input -->
+    <div id="chat-input-area" class="hidden bg-white border-t border-gray-200 px-5 py-3 flex flex-col gap-2">
+      <div id="consultant-file-preview" class="hidden items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
+        <span id="consultant-file-name" class="text-xs text-gray-600 flex-1 truncate"></span>
+        <button onclick="clearConsultantFile()" class="text-gray-400 hover:text-red-500 text-xs leading-none">✕</button>
+      </div>
+      <div class="flex gap-2 items-center">
+        <input type="file" id="consultant-file-input" accept="image/*,.pdf,.doc,.docx" class="hidden" onchange="handleConsultantFileSelect(this)" />
+        <button onclick="document.getElementById('consultant-file-input').click()" class="text-gray-400 hover:text-blue-600 transition p-1" title="Attach file">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+        </button>
+        <input id="chat-input" placeholder="Type a message as consultant…" class="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendConsultantMessage();}" />
+        <button onclick="sendConsultantMessage()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition font-medium">Send</button>
+      </div>
+    </div>
+
+    <!-- Test Chat Input -->
+    <div id="test-input-area" class="hidden bg-white border-t border-gray-200 px-5 py-3 flex flex-col gap-2">
+      <!-- Recording status bar -->
+      <div id="mic-recording-bar" class="hidden items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
+        <span class="w-2 h-2 rounded-full bg-red-500 mic-recording flex-shrink-0"></span>
+        <span class="text-xs text-red-600 font-medium flex-1">Recording… click the mic to stop</span>
+        <span id="mic-timer" class="text-xs text-red-500 font-mono">0:00</span>
+      </div>
+      <div id="test-file-preview" class="hidden items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
+        <span id="test-file-name" class="text-xs text-gray-600 flex-1 truncate"></span>
+        <button onclick="clearTestFile()" class="text-gray-400 hover:text-red-500 text-xs leading-none">✕</button>
+      </div>
+      <div class="flex gap-2 items-center">
+        <input type="file" id="test-file-input" accept="image/*,.pdf,.doc,.docx" class="hidden" onchange="handleTestFileSelect(this)" />
+        <button onclick="document.getElementById('test-file-input').click()" class="text-gray-400 hover:text-green-600 transition p-1" title="Attach file">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+        </button>
+        <!-- Mic button -->
+        <button id="mic-btn" onclick="toggleMicRecording()" title="Voice input" class="text-gray-400 hover:text-green-600 transition p-1">
+          <svg id="mic-icon" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="9" y="2" width="6" height="12" rx="3"/>
+            <path d="M5 10a7 7 0 0014 0M12 19v3M8 22h8"/>
+          </svg>
+        </button>
+        <!-- Language selector for speech input -->
+        <select id="speech-lang" title="Speech language" class="border border-gray-200 rounded px-1 py-1 text-xs text-gray-500 focus:outline-none focus:ring-1 focus:ring-green-400 bg-transparent">
+          <option value="en-US">EN</option>
+          <option value="si-LK">SI</option>
+          <option value="ta-LK">TA</option>
+          <option value="zh">ZH</option>
+          <option value="de-DE">DE</option>
+          <option value="fr-FR">FR</option>
+          <option value="ja-JP">JA</option>
+        </select>
+        <!-- Audio output toggle -->
+        <button id="audio-toggle-btn" onclick="toggleAudioOutput()" title="Enable audio output" class="text-gray-400 hover:text-green-600 transition p-1">
+          <svg id="audio-on-icon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/>
+          </svg>
+          <svg id="audio-off-icon" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <line x1="23" y1="9" x2="17" y2="15"/>
+            <line x1="17" y1="9" x2="23" y2="15"/>
+          </svg>
+        </button>
+        <input id="test-input" placeholder="Type or speak a message…" class="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+          onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendTestMessage();}" />
+        <button onclick="sendTestMessage()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition font-medium">Send</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- RIGHT: Avatar Panel -->
+  <aside class="w-60 bg-black border-l border-gray-800 flex flex-col items-center justify-center flex-shrink-0">
+    <div id="avatar-widget" class="relative rounded-2xl overflow-hidden shadow-2xl border border-gray-700" style="width:220px;height:391px;">
+      <canvas id="avatar-canvas" style="width:100%;height:100%;display:block;"></canvas>
+      <div id="avatar-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:12px;">Loading avatar…</div>
+    </div>
+  </aside>
+
+</div>
+
+<!-- Toast -->
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-5 py-2 rounded-full shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none z-50"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://esm.sh/three@0.165.0",
+    "three/addons/": "https://esm.sh/three@0.165.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { Lipsync, VISEMES } from 'https://esm.sh/wawa-lipsync';
+
+const AVATAR_URL = 'http://localhost:5001/models/64f1a714fe61576b46f27ca2.glb';
+const W = 220, H = 391;
+
+const canvas = document.getElementById('avatar-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(W, H, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+
+const camera = new THREE.PerspectiveCamera(28, W / H, 0.1, 10);
+camera.position.set(0, 1.68, 0.9);
+camera.lookAt(0, 1.55, 0);
+
+const addLight = (hex, intensity, x, y, z) => {
+  const l = new THREE.DirectionalLight(hex, intensity);
+  l.position.set(x, y, z);
+  scene.add(l);
+};
+addLight(0x4444ff, 2,  1,  0.5, -3);
+addLight(0xff4444, 2, -1,  0.5, -2);
+addLight(0xffffff, 2,  1,  1,    3);
+scene.add(new THREE.AmbientLight(0x555555, 1));
+
+const lipsync = new Lipsync();
+const ALL_VISEMES = Object.values(VISEMES);
+
+window.resumeLipsync = () => {
+  const ctx = lipsync.audioContext;
+  if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
+};
+
+window.connectLipsyncAudio = (audioEl) => {
+  try {
+    lipsync.connectAudio(audioEl);
+  } catch (e) {
+    console.warn('Lipsync connect:', e);
+  }
+};
+
+let morphMeshes = [];
+let mixer = null;
+let avatarReady = false;
+const loader = new GLTFLoader();
+
+loader.load(AVATAR_URL, gltf => {
+  scene.add(gltf.scene);
+  gltf.scene.traverse(c => {
+    if (c.isMesh && c.morphTargetDictionary) morphMeshes.push(c);
+  });
+  avatarReady = true;
+  const loadingEl = document.getElementById('avatar-loading');
+  if (loadingEl) loadingEl.style.display = 'none';
+
+  const base = document.getElementById('api-base-input')?.value.replace(/\/$/, '') || 'http://localhost:5001';
+  loader.load(
+    base + '/models/animations.glb',
+    animGltf => {
+      mixer = new THREE.AnimationMixer(gltf.scene);
+      const idle = THREE.AnimationClip.findByName(animGltf.animations, 'Idle') || animGltf.animations[0];
+      if (idle) mixer.clipAction(idle).play();
+    },
+    undefined,
+    () => {}
+  );
+}, undefined, () => {
+  const loadingEl = document.getElementById('avatar-loading');
+  if (loadingEl) loadingEl.textContent = 'Avatar unavailable';
+});
+
+function lerpMorph(name, target, speed) {
+  for (const mesh of morphMeshes) {
+    const i = mesh.morphTargetDictionary?.[name];
+    if (i == null) continue;
+    mesh.morphTargetInfluences[i] = THREE.MathUtils.lerp(
+      mesh.morphTargetInfluences[i], target, speed
+    );
+  }
+}
+
+let blinking = false;
+(function scheduleBlink() {
+  setTimeout(() => {
+    blinking = true;
+    setTimeout(() => { blinking = false; scheduleBlink(); }, 150);
+  }, THREE.MathUtils.randInt(1500, 5000));
+})();
+
+const clock = new THREE.Clock();
+(function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  if (mixer) mixer.update(dt);
+  if (avatarReady) {
+    lerpMorph('eyeBlinkLeft',  blinking ? 1 : 0, 0.5);
+    lerpMorph('eyeBlinkRight', blinking ? 1 : 0, 0.5);
+    lipsync.processAudio();
+    const v = lipsync.viseme;
+    lerpMorph(v, 1, 0.4);
+    for (const vis of ALL_VISEMES) if (vis !== v) lerpMorph(vis, 0, 0.2);
+  }
+  renderer.render(scene, camera);
+})();
+</script>
+
+<script>
+let state = {
+  orgId: '001',
+  selectedUserId: null,
+  consultantMode: false,
+  isTestChat: false,
+  testUserId: null,
+  pollInterval: null,
+};
+let selectedTestFile = null;
+let selectedConsultantFile = null;
+
+function api(path) {
+  const base = document.getElementById('api-base-input').value.replace(/\/$/, '');
+  return base + path;
+}
+function orgId() { return document.getElementById('org-id-input').value.trim(); }
+
+async function init() {
+  state.orgId = orgId();
+  state.selectedUserId = null;
+  state.isTestChat = false;
+  // Sync initial speaker toggle state with backend
+  fetch(api('/set_tts'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: audioEnabled })
+  }).catch(() => {});
+  loadUsers();
+  clearPoll();
+  state.pollInterval = setInterval(() => {
+    loadUsers();
+    if (state.selectedUserId && !state.isTestChat) refreshConversation();
+  }, 5000);
+}
+
+async function loadUsers() {
+  const res = await apiFetch('/list_user_ids', { org_id: orgId() });
+  if (!res) return;
+  res.sort((a, b) => b.time_stamp.localeCompare(a.time_stamp));
+  const list = document.getElementById('user-list');
+  if (!res.length) { list.innerHTML = '<div class="p-4 text-sm text-gray-400">No users found.</div>'; return; }
+  list.innerHTML = res.map(u => `
+    <div class="user-item px-4 py-3 cursor-pointer hover:bg-gray-50 transition flex items-center gap-3 ${u.phone_number === state.selectedUserId ? 'selected' : ''}"
+         onclick="selectUser('${u.phone_number}', ${u.consultant_mode}, '${u.name}')">
+      <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+           style="background:${avatarColor(u.phone_number)}">
+        ${u.name ? u.name[0].toUpperCase() : '?'}
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-medium text-gray-800 truncate ${u.studio_style === 'bold' ? 'font-bold' : ''}">${u.name || u.phone_number}</span>
+          ${u.unread_count > 0 ? `<span class="badge bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">${u.unread_count}</span>` : ''}
+        </div>
+        <div class="text-xs text-gray-400 truncate">${u.phone_number}</div>
+        ${u.consultant_mode ? '<div class="text-xs text-orange-500 font-medium">Consultant Active</div>' : ''}
+      </div>
+    </div>`).join('');
+}
+
+function avatarColor(str) {
+  const colors = ['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981','#6366f1'];
+  let hash = 0;
+  for (let c of str) hash = c.charCodeAt(0) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
+}
+
+async function selectUser(userId, consultantMode, name) {
+  state.selectedUserId = userId;
+  state.isTestChat = false;
+  state.consultantMode = consultantMode;
+  document.getElementById('chat-user-label').textContent = name || userId;
+  document.getElementById('chat-user-sub').textContent = userId;
+  document.getElementById('consultant-controls').classList.remove('hidden');
+  document.getElementById('consultant-controls').classList.add('flex');
+  updateConsultantToggleBtn(consultantMode);
+  document.getElementById('chat-input-area').classList.toggle('hidden', !consultantMode);
+  document.getElementById('test-input-area').classList.add('hidden');
+  await loadConversation(userId);
+  await markAsRead(userId);
+  loadUsers();
+}
+
+async function loadConversation(userId) {
+  const res = await apiFetch('/get_conversation', { org_id: orgId(), userId: userId });
+  if (!res) return;
+  renderMessages(res.conversation || []);
+}
+
+async function refreshConversation() {
+  if (!state.selectedUserId || state.isTestChat) return;
+  await loadConversation(state.selectedUserId);
+}
+
+async function markAsRead(userId) {
+  await apiFetch('/mark_as_read_testchat/', { org_id: orgId(), user_id: userId });
+}
+
+function renderMessages(msgs) {
+  const box = document.getElementById('chat-messages');
+  if (!msgs.length) {
+    box.innerHTML = '<div class="flex items-center justify-center h-full text-gray-400 text-sm">No messages yet.</div>';
+    return;
+  }
+  box.innerHTML = msgs.map(m => {
+    const isAI = 'ai' in m || 'consultant' in m;
+    const isConsultant = 'consultant' in m;
+    const content = m.ai || m.consultant || m.human || '';
+    const ts = m.time_stamp || '';
+    const align = isAI ? 'justify-end' : 'justify-start';
+    const bubble = isConsultant
+      ? 'bg-orange-100 text-gray-800 border border-orange-200'
+      : isAI
+        ? 'bg-blue-600 text-white'
+        : 'bg-white text-gray-800 border border-gray-200';
+    const label = isConsultant ? '<div class="text-xs text-orange-500 mb-0.5">Consultant</div>' : '';
+    return `
+      <div class="flex ${align}">
+        <div class="msg-bubble">
+          ${label}
+          <div class="rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${bubble}">${escHtml(content)}</div>
+          ${ts ? `<div class="text-xs text-gray-400 mt-1 px-1">${ts}</div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+function updateConsultantToggleBtn(on) {
+  const btn = document.getElementById('consultant-toggle-btn');
+  if (on) {
+    btn.textContent = 'Turn OFF';
+    btn.className = 'px-3 py-1 text-xs rounded font-medium transition bg-orange-100 text-orange-700 hover:bg-orange-200';
+  } else {
+    btn.textContent = 'Turn ON';
+    btn.className = 'px-3 py-1 text-xs rounded font-medium transition bg-green-100 text-green-700 hover:bg-green-200';
+  }
+}
+
+async function toggleConsultantMode() {
+  if (!state.selectedUserId) return;
+  const newMode = !state.consultantMode ? 'on' : 'off';
+  const res = await fetch(api('/consultant_mode_switch'), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ org_id: orgId(), userId: state.selectedUserId, mode: newMode })
+  });
+  if (res.ok) {
+    state.consultantMode = !state.consultantMode;
+    updateConsultantToggleBtn(state.consultantMode);
+    document.getElementById('chat-input-area').classList.toggle('hidden', !state.consultantMode);
+    toast(`Consultant mode ${newMode.toUpperCase()}`);
+  }
+}
+
+function handleConsultantFileSelect(input) {
+  if (input.files.length > 0) {
+    selectedConsultantFile = input.files[0];
+    document.getElementById('consultant-file-preview').classList.remove('hidden');
+    document.getElementById('consultant-file-preview').classList.add('flex');
+    document.getElementById('consultant-file-name').textContent = '📎 ' + selectedConsultantFile.name;
+  }
+}
+function clearConsultantFile() {
+  selectedConsultantFile = null;
+  document.getElementById('consultant-file-input').value = '';
+  document.getElementById('consultant-file-preview').classList.add('hidden');
+  document.getElementById('consultant-file-preview').classList.remove('flex');
+}
+
+async function sendConsultantMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text && !selectedConsultantFile) return;
+  if (!state.selectedUserId) return;
+  input.value = '';
+  input.disabled = true;
+
+  if (selectedConsultantFile) {
+    const form = new FormData();
+    form.append('file', selectedConsultantFile);
+    form.append('org_id', orgId());
+    form.append('userId', state.selectedUserId);
+    if (text) form.append('caption', text);
+    clearConsultantFile();
+    try {
+      const upRes = await fetch(api('/upload_consultant_file/'), { method: 'POST', body: form });
+      if (upRes.ok) {
+        const upData = await upRes.json();
+        await apiFetch('/consultant_send_message', {
+          org_id: orgId(), userId: state.selectedUserId,
+          media_id: upData.file_url, caption: text, file_name: upData.file_name
+        });
+      } else {
+        toast('File upload failed.', true);
+      }
+    } catch(e) { toast('File upload failed.', true); }
+  } else {
+    await apiFetch('/consultant_send_message', {
+      org_id: orgId(), userId: state.selectedUserId, response_text: text
+    });
+  }
+  input.disabled = false;
+  input.focus();
+  await loadConversation(state.selectedUserId);
+}
+
+async function openTestChat() {
+  state.isTestChat = true;
+  state.selectedUserId = null;
+  state.testUserId = 'test_' + Date.now();
+  clearTestFile();
+  document.getElementById('chat-user-label').textContent = 'Test Chat';
+  document.getElementById('chat-user-sub').textContent = state.testUserId;
+  document.getElementById('consultant-controls').classList.add('hidden');
+  document.getElementById('chat-input-area').classList.add('hidden');
+  document.getElementById('test-input-area').classList.remove('hidden');
+  document.getElementById('chat-messages').innerHTML =
+    '<div class="flex items-center justify-center h-full text-gray-400 text-sm">Start a conversation with the bot.</div>';
+  document.getElementById('test-input').focus();
+}
+
+function handleTestFileSelect(input) {
+  if (input.files.length > 0) {
+    selectedTestFile = input.files[0];
+    document.getElementById('test-file-preview').classList.remove('hidden');
+    document.getElementById('test-file-preview').classList.add('flex');
+    document.getElementById('test-file-name').textContent = '📎 ' + selectedTestFile.name;
+  }
+}
+function clearTestFile() {
+  selectedTestFile = null;
+  document.getElementById('test-file-input').value = '';
+  document.getElementById('test-file-preview').classList.add('hidden');
+  document.getElementById('test-file-preview').classList.remove('flex');
+}
+
+async function sendTestMessage() {
+  const input = document.getElementById('test-input');
+  const text = input.value.trim();
+  const file = selectedTestFile;
+  if (!text && !file) return;
+  input.value = '';
+  input.disabled = true;
+  appendTestMessage('human', text, file);
+  clearTestFile();
+
+  if (window.resumeLipsync) window.resumeLipsync();
+
+  const form = new FormData();
+  form.append('org_id', orgId());
+  form.append('userId', state.testUserId);
+  form.append('question', text);
+  form.append('language_code', document.getElementById('speech-lang').value);
+  if (file) form.append('file', file);
+
+  try {
+    const res = await fetch(api('/common_chat/'), { method: 'POST', body: form });
+    input.disabled = false;
+    input.focus();
+    if (res.ok) {
+      const data = await res.json();
+      if (data.result) appendTestMessage('ai', data.result.bot_text || '', null, false, data.result.audio_url || null);
+    } else {
+      toast('Failed to send message.', true);
+    }
+  } catch(e) {
+    input.disabled = false;
+    toast('Failed to send message.', true);
+  }
+}
+
+function appendTestMessage(role, content, file = null, isVoice = false, audioUrl = null) {
+  const box = document.getElementById('chat-messages');
+  const placeholder = box.querySelector('.flex.items-center.justify-center');
+  if (placeholder) placeholder.remove();
+
+  const isAI = role === 'ai';
+  const div = document.createElement('div');
+  div.className = `flex ${isAI ? 'justify-end' : 'justify-start'}`;
+
+  let fileHtml = '';
+  if (file) {
+    if (file.type.startsWith('image/')) {
+      const objUrl = URL.createObjectURL(file);
+      fileHtml = `<img src="${objUrl}" class="rounded-xl max-w-xs max-h-48 object-cover mb-1" />`;
+    } else {
+      fileHtml = `<div class="text-xs text-gray-500 bg-gray-100 rounded-lg px-3 py-1.5 mb-1 flex items-center gap-1">📎 ${escHtml(file.name)}</div>`;
+    }
+  }
+
+  const bubbleClass = isAI
+    ? 'bg-blue-600 text-white'
+    : isVoice
+      ? 'bg-green-50 text-gray-700 border border-green-200'
+      : 'bg-white text-gray-800 border border-gray-200';
+  const contentHtml = content ? `<div class="rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${bubbleClass}">${escHtml(content)}</div>` : '';
+
+  div.innerHTML = `<div class="msg-bubble">${fileHtml}${contentHtml}</div>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+
+  if (audioUrl && isAI && audioEnabled) {
+    const src = api(audioUrl) + '?t=' + Date.now();
+    const audioEl = new Audio();
+    audioEl.crossOrigin = 'anonymous';
+    audioEl.src = src;
+    audioEl.controls = true;
+    audioEl.className = 'mt-1 rounded-lg';
+    audioEl.style.cssText = 'height:28px;max-width:240px;display:block;';
+    div.querySelector('.msg-bubble').appendChild(audioEl);
+    if (window.connectLipsyncAudio) window.connectLipsyncAudio(audioEl);
+    audioEl.play().catch(() => {});
+  }
+}
+
+
+async function apiFetch(path, body) {
+  try {
+    const res = await fetch(api(path), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+}
+
+function toast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = isError ? '#dc2626' : '#1f2937';
+  t.style.opacity = '1';
+  setTimeout(() => t.style.opacity = '0', 3000);
+}
+
+
+function clearPoll() {
+  if (state.pollInterval) { clearInterval(state.pollInterval); state.pollInterval = null; }
+}
+
+let audioEnabled = false;
+
+async function toggleAudioOutput() {
+  audioEnabled = !audioEnabled;
+  document.getElementById('audio-on-icon').classList.toggle('hidden', !audioEnabled);
+  document.getElementById('audio-off-icon').classList.toggle('hidden', audioEnabled);
+  const btn = document.getElementById('audio-toggle-btn');
+  btn.classList.toggle('text-green-600', audioEnabled);
+  btn.classList.toggle('text-gray-400', !audioEnabled);
+  btn.title = audioEnabled ? 'Disable audio output' : 'Enable audio output';
+  await fetch(api('/set_tts'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: audioEnabled })
+  }).catch(() => {});
+}
+
+let micRecorder = null;
+let micStream = null;
+let micChunks = [];
+let micActive = false;
+let micTimerInterval = null;
+let micSeconds = 0;
+const MIC_MAX_SECONDS = 120;
+
+async function toggleMicRecording() {
+  if (!micActive) {
+    await startMicRecording();
+  } else {
+    stopMicRecording();
+  }
+}
+
+async function startMicRecording() {
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (err) {
+    toast('Microphone access denied.', true);
+    return;
+  }
+
+  micChunks = [];
+  micSeconds = 0;
+
+  const preferredTypes = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/ogg;codecs=opus',
+    'audio/ogg',
+    'audio/mp4',
+  ];
+  const mimeType = preferredTypes.find(t => MediaRecorder.isTypeSupported(t)) || '';
+
+  micRecorder = new MediaRecorder(micStream, mimeType ? { mimeType } : {});
+  micRecorder.ondataavailable = e => { if (e.data.size > 0) micChunks.push(e.data); };
+  micRecorder.onstop = () => {
+    const blob = new Blob(micChunks, { type: micRecorder.mimeType || 'audio/webm' });
+    sendAudioToChat(blob, micRecorder.mimeType || 'audio/webm');
+  };
+
+  micRecorder.start(250);
+  micActive = true;
+  setMicUI(true);
+
+  micTimerInterval = setInterval(() => {
+    micSeconds++;
+    const m = Math.floor(micSeconds / 60);
+    const s = String(micSeconds % 60).padStart(2, '0');
+    document.getElementById('mic-timer').textContent = `${m}:${s}`;
+    if (micSeconds >= MIC_MAX_SECONDS) stopMicRecording();
+  }, 1000);
+}
+
+function stopMicRecording() {
+  if (!micRecorder) return;
+  clearInterval(micTimerInterval);
+  micRecorder.stop();
+  micStream.getTracks().forEach(t => t.stop());
+  micActive = false;
+  setMicUI(false);
+}
+
+function setMicUI(recording) {
+  const btn = document.getElementById('mic-btn');
+  const bar = document.getElementById('mic-recording-bar');
+  const input = document.getElementById('test-input');
+
+  if (recording) {
+    btn.classList.add('mic-recording');
+    btn.title = 'Stop recording';
+    bar.classList.remove('hidden');
+    bar.classList.add('flex');
+    input.placeholder = 'Recording…';
+    input.disabled = true;
+  } else {
+    btn.classList.remove('mic-recording');
+    btn.title = 'Voice input';
+    bar.classList.add('hidden');
+    bar.classList.remove('flex');
+    input.placeholder = 'Type or speak a message…';
+    input.disabled = false;
+    document.getElementById('mic-timer').textContent = '0:00';
+  }
+}
+
+async function sendAudioToChat(audioBlob, mimeType) {
+  if (window.resumeLipsync) window.resumeLipsync();
+  const userId = state.testUserId;
+  const lang = document.getElementById('speech-lang').value;
+
+  const box = document.getElementById('chat-messages');
+  const placeholder = box.querySelector('.flex.items-center.justify-center');
+  if (placeholder) placeholder.remove();
+  const pending = document.createElement('div');
+  pending.className = 'flex justify-start';
+  pending.innerHTML = `<div class="msg-bubble"><div class="rounded-2xl px-4 py-2.5 text-sm bg-white border border-gray-200 text-gray-400 flex items-center gap-2"><span class="spinner"></span> Transcribing…</div></div>`;
+  box.appendChild(pending);
+  box.scrollTop = box.scrollHeight;
+
+  const form = new FormData();
+  form.append('org_id', orgId());
+  form.append('userId', userId);
+  form.append('question', '');
+  form.append('language_code', lang);
+  form.append('audio', audioBlob, 'voice.' + (mimeType.includes('ogg') ? 'ogg' : 'webm'));
+
+  try {
+    const res = await fetch(api('/common_chat/'), { method: 'POST', body: form });
+    pending.remove();
+    if (res.ok) {
+      const data = await res.json();
+      const botText = data.result?.bot_text || '';
+      const audioUrl = data.result?.audio_url || null;
+      appendTestMessage('human', '🎤 Voice message', null, true);
+      if (botText) appendTestMessage('ai', botText, null, false, audioUrl);
+    } else {
+      toast('Voice send failed.', true);
+    }
+  } catch (e) {
+    pending.remove();
+    toast('Voice send failed.', true);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  init();
+});
+</script>
+</body>
+</html>
