@@ -28,7 +28,8 @@ A web-based AI customer support chatbot built with FastAPI, LangGraph, OpenAI an
 
 ## Credentials
 
-The `.env` file and Google Cloud service credentials (.json) are provided
+The `.env` file and Google Cloud service credentials (.json) are provided, place them 
+in the `slt-visual-agent` folder
 ---
 
 ## Docker Deployment (Recomended)
