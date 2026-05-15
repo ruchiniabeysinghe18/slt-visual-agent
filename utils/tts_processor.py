@@ -32,12 +32,6 @@ _LANGUAGE_VOICE_MAP = {
     "en-US": ("en-US", "en-US-Neural2-F",  "Kore"),
     "si-LK": ("si-LK", "si-LK-Standard-A", "Kore"),
     "ta-LK": ("ta-IN", "ta-IN-Neural2-A",  "Kore"),
-    "ta-IN": ("ta-IN", "ta-IN-Neural2-A",  "Kore"),
-    "zh":    ("cmn-CN", "cmn-CN-Wavenet-A", "Kore"),
-    "zh-CN": ("cmn-CN", "cmn-CN-Wavenet-A", "Kore"),
-    "de-DE": ("de-DE", "de-DE-Neural2-F",  "Kore"),
-    "fr-FR": ("fr-FR", "fr-FR-Neural2-C",  "Kore"),
-    "ja-JP": ("ja-JP", "ja-JP-Neural2-B",  "Kore"),
 }
 
 
@@ -104,7 +98,6 @@ async def _synthesize_cloud(
 async def _synthesize_gemini(
     text: str,
     output_file: str,
-    language_code: str,
 ) -> str:
     from google import genai
     from google.genai import types
@@ -162,7 +155,7 @@ async def synthesize_text(
     logger.debug(f"synthesize_text | provider={provider} lang={language_code} output={output_file}")
 
     if provider == "gemini":
-        return await _synthesize_gemini(text, output_file, language_code)
+        return await _synthesize_gemini(text, output_file)
 
     if provider == "cloud":
         return await _synthesize_cloud(text, output_file, language_code, speaking_rate, pitch)

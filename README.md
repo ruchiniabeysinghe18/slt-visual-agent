@@ -1,12 +1,12 @@
 # AI Support Chatbot
 
-A WhatsApp and web-based AI customer support chatbot built with FastAPI, LangGraph, and OpenAI. Supports RAG over PDF documents and websites, consultant escalation, booking/service request handling, and speech-to-text.
+A web-based AI customer support chatbot built with FastAPI, LangGraph, OpenAI and Gemini. Supports RAG over PDF documents and websites, consultant escalation, service request handling in the fourm of tickets. speech support in English, Sinhala and Tamil. Web based realtime avatar id added to give an human appearance.
 
 ---
 
-# Conditions
+## Conditions
 
-1. Uploading file must be text PDFs, On OCR processing is implimented to support image PDFs
+1. Uploading file must be text PDFs, **No OCR processing is implimented to support image PDFs**
 2. Use chrome web-browser
 4. If run in a VM ,avtar feature may not work  due to missing grafical libraiers and drivers, but chatbot will functional as usual
 ---
@@ -14,80 +14,24 @@ A WhatsApp and web-based AI customer support chatbot built with FastAPI, LangGra
 ## System Requirements
 
 - Docker and Docker Compose installed
-- Port `5001` open (FastAPI app)
-- Port `27017` open if you need external MongoDB access
+- Port `5001` (fast API) and `27017`(MongoDB) avaialble
 
 ---
-## Create a project folder
+## Create a project folder with a suitable name
 
 ---
-## Clone repos in to the project folder
+## Clone following repos in to the project folder
 1. ai chatbot code : git clone https://github.com/ruchiniabeysinghe18/slt-visual-agent.git
 2. visual avatar : git clone https://github.com/wass08/wawa-lipsync/
 
 ---
 
-## Credentials and Configuration
+## Credentials
 
-### 1. `.env` file
-
-Create a `.env` file in the project root with the following variables:
-
-```env
-# OpenAI
-OPENAI_API_KEY=sk-...
-
-# MongoDB
-DATABASE=SLT_AI_ASSIST
-DB_HOST=localhost        # use "mongodb" when running via Docker Compose
-DB_PORT=27017
-
-# WhatsApp Business API (refer meta developer instructions)
-ACCESS_TOKEN=<whatsapp_permanent_access_token>
-VERSION=v25.0
-PHONE_NUMBER_ID=<whatsapp_phone_number_id>
-VERIFY_TOKEN=<your_webhook_verify_token>
-
-# Knowledge base selection — include "doc", "web", or both
-KB=["doc", "web"]
-
-# Agent phone numbers to notify on escalation
-AGENTS=["94710844007"]
-
-# Upload limits
-DOCUMENT_LIMIT=5
-WEBSITE_LIMIT=5
-
-# Timezone
-TIME_ZONE=Asia/Colombo
-
-# Google Cloud credentials (path on host; Docker overrides this automatically)
-GOOGLE_APPLICATION_CREDENTIALS=./sltaichallange-599b3b8646ad.json
-
-# Text-to-speech
-USE_TTS=true
-TTS_PROVIDER=gemini        # "gemini" or "claude"
-GEMINI_API_KEY=<gemini_api_key>
-```
-
-### 2. `sltaichallange-599b3b8646ad.json` — Google Cloud Service Account
-
-This file is required for **Google Cloud Speech-to-Text** and **Text-to-Speech**.
-
-To obtain it:
-1. Go to [Google Cloud Console](https://console.cloud.google.com/) → IAM & Admin → Service Accounts
-2. Select or create a service account with the following roles:
-   - `Cloud Speech-to-Text User`
-   - `Cloud Text-to-Speech User`
-3. Click **Keys** → **Add Key** → **Create new key** → **JSON**
-4. Rename the downloaded file to `sltaichallange-599b3b8646ad.json`
-5. Place it in the project root (same directory as `docker-compose.yml`)
-
-> Docker Compose mounts this file into the container at `/app/sltaichallange-599b3b8646ad.json` and sets `GOOGLE_APPLICATION_CREDENTIALS` automatically — no extra configuration needed when using Docker.
-
+The `.env` file and Google Cloud service credentials (.json) are provided
 ---
 
-## Docker Deployment
+## Docker Deployment (Recomended)
 
 ### Build and start
 
@@ -143,7 +87,41 @@ The following directories are mounted from the host into the container so data s
 
 ---
 
-## API
+## Run with Python (without Docker)
+
+### Prerequisites
+
+- Python 3.11
+- MongoDB running locally on port `27017`
+
+### 1. Install dependencies
+
+```bash
+cd slt-visual-agent
+pip install -r requirements.txt
+```
+
+### 2. Start the app
+
+```bash
+python main.py
+```
+---
+
+## Web service
+
+The APP will be available at `http://localhost:5001`.
+
+- Chat UI: `http://localhost:5001/app`
+- Admin UI: `http://localhost:5001/admin`
+
+Admin panel will be used to 
+- Upload files and websited to the knowledge base
+- visualize tickets, later this can be connected with real ticketing system. 
+
+---
+
+## APIs
 
 The app exposes a REST API at `http://localhost:5001`.
 
@@ -157,7 +135,6 @@ The app exposes a REST API at `http://localhost:5001`.
 | `/delete_pdf` | POST | Delete a PDF |
 | `/list_user_ids` | POST | List all users |
 | `/get_conversation` | POST | Get chat history for a user |
-| `/consultant_send_message` | POST | Send message as consultant |
 | `/consultant_mode_switch` | POST | Toggle consultant mode |
 | `/get_bookings` | POST | List service bookings |
 | `/admin` | GET | Admin UI |
