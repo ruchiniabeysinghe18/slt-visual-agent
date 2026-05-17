@@ -40,6 +40,7 @@ import json
 from typing import List, Optional
 import requests
 from common_bot import common_chatbot, analyse_consultant_conversation
+from utils.api_node import reload_spec as reload_openapi_spec
 
 from fastapi import FastAPI,HTTPException,Request,UploadFile,Form,Depends,Response, BackgroundTasks, File
 from fastapi.responses import JSONResponse, FileResponse
@@ -956,6 +957,46 @@ async def update_booking_status(request: Request):
     except Exception as e:
         logger.debug(f"Error update_booking_status/: \n {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/upload_openapi_spec")
+async def upload_openapi_spec(file: UploadFile = File(...)):
+    """Replace openapi_spec.json with the uploaded file and hot-reload the spec."""
+    try:
+        if not file.filename.lower().endswith(".json"):
+            return Response(content="Only .json files are accepted", status_code=400)
+
+        content = await file.read()
+
+        try:
+            json.loads(content)
+        except json.JSONDecodeError as e:
+            return Response(content=f"Invalid JSON: {e}", status_code=400)
+
+        spec_path = pathlib.Path(__file__).parent / "openapi_spec.json"
+        with open(spec_path, "wb") as f:
+            f.write(content)
+
+        reload_openapi_spec()
+        logger.info("OpenAPI spec replaced and reloaded")
+        return Response(content="OpenAPI spec uploaded and reloaded successfully", status_code=200)
+
+    except Exception as e:
+        logger.debug(f"Error upload_openapi_spec/: \n {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/download_openapi_spec")
+async def download_openapi_spec():
+    """Return the current openapi_spec.json as a file download."""
+    spec_path = pathlib.Path(__file__).parent / "openapi_spec.json"
+    if not spec_path.exists():
+        raise HTTPException(status_code=404, detail="openapi_spec.json not found")
+    return FileResponse(
+        str(spec_path),
+        media_type="application/json",
+        filename="openapi_spec.json",
+    )
 
 
 if __name__ == '__main__':

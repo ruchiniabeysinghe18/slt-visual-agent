@@ -11,23 +11,18 @@ from datetime import datetime
 SERVICE_INFO = {
     "telco_support": {
         "description": "Telco Customer Support — resolve data balance inquiries, mobile/broadband connection issues, billing problems, or general account support.",
-        "filtering_info": ["issue type (data balance / connection issue / billing / SIM / other)"],
+        "filtering_info": ["issue type (data balance / connection issue / SIM / other)"],
         "required_info": ["full name", "account number or registered phone number", "issue type", "issue description"],
     },
-    # "package_recommendation": {
+    # "package_namagement": {
     #     "description": "Package Recommendation — suggest the most suitable data, voice, or combo plan based on the customer's usage pattern and budget.",
     #     "filtering_info": ["usage type (data / voice / combo)", "monthly budget range"],
     #     "required_info": ["full name", "contact number", "current plan (if any)", "preferred usage type (data / voice / combo)", "monthly budget range"],
     # },
-    # "training_assistant": {
-    #     "description": "Training & Knowledge Assistant — help internal staff access company SOPs, policy documents, onboarding guides, and operational guidelines.",
-    #     "filtering_info": ["topic area (SOP / policy / technical guide / onboarding / compliance)"],
-    #     "required_info": ["staff name", "staff ID or employee number", "department", "topic or SOP reference needed"],
-    # },
     "new_connection": {
         "description": "New Connection Assistant — process new fiber or 4G broadband connection requests for residential or business customers.",
         "filtering_info": ["connection type (fiber / 4G)", "customer type (residential / business)", "area or district"],
-        "required_info": ["full name", "NIC number", "installation address", "contact number", "connection type (fiber / 4G)", "preferred installation date"],
+        "required_info": ["full name", "NIC number", "installation address", "contact number", "connection type (fiber / 4G)"],
     },
 }
 
@@ -589,6 +584,31 @@ User input:
 
 Answer (yes or no only):
 """)
+
+# ---------------------------------------------------------------------------
+# API ROUTE DETECTION PROMPT
+# Decides whether the user's input requires calling a backend API ("yes" / "no").
+# ---------------------------------------------------------------------------
+api_route_prompt_template = ChatPromptTemplate.from_messages([
+    ("system", """
+You are a detection bot.
+
+Your task is to determine whether the user's request requires calling one of the available backend APIs listed below.
+
+Available APIs:
+{api_summary}
+
+Rules:
+- Reply with "yes" if the user is asking for something that one of the APIs can directly fulfill
+  (e.g., checking data balance, activating a package, cancelling a package, viewing their current plan).
+- Reply with "no" if the user is asking a general/informational question, making small talk,
+  submitting a service request form, or requesting something not covered by the APIs above.
+
+Only reply with "yes" or "no". No explanations.
+"""),
+    MessagesPlaceholder(variable_name="chat_history"),
+    ("human", "{user_input}"),
+])
 
 # ---------------------------------------------------------------------------
 # KEYWORD EXTRACTION PROMPT

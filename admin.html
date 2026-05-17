@@ -190,6 +190,42 @@
             </div>
           </div>
 
+          <!-- API Spec Card -->
+          <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm flex flex-col gap-4 lg:col-span-2">
+            <div class="flex items-center gap-2">
+              <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+              <h3 class="font-semibold text-sm text-gray-700">API Specification</h3>
+            </div>
+            <p class="text-xs text-gray-400 -mt-2">Upload a new OpenAPI JSON spec to update available API tools. The server reloads the spec immediately — no restart needed.</p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <!-- Upload -->
+              <div>
+                <label class="block text-xs text-gray-500 mb-1 font-medium">Upload new spec (.json)</label>
+                <input type="file" id="api-spec-input" accept=".json"
+                       class="w-full text-xs text-gray-500 border border-gray-300 rounded p-1.5 mb-2" />
+                <button onclick="uploadOpenAPISpec()"
+                        class="w-full bg-orange-500 text-white text-sm py-2 rounded-lg hover:bg-orange-600 transition font-medium">
+                  Upload &amp; Reload Spec
+                </button>
+                <div id="api-spec-upload-status" class="text-xs mt-2 text-gray-500"></div>
+              </div>
+
+              <!-- Download -->
+              <div class="flex flex-col justify-between">
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1 font-medium">Current spec</label>
+                  <p class="text-xs text-gray-400 mb-3">Download the active <code class="bg-gray-100 px-1 rounded">openapi_spec.json</code> to review or edit it locally.</p>
+                </div>
+                <button onclick="downloadOpenAPISpec()"
+                        class="w-full flex items-center justify-center gap-2 border border-orange-300 text-orange-600 text-sm py-2 rounded-lg hover:bg-orange-50 transition font-medium">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                  Download Current Spec
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- KB Source Settings -->
           <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm flex flex-col gap-4 lg:col-span-2">
             <div class="flex items-center gap-2">
@@ -664,6 +700,41 @@ function populateSettingsFields() {
   document.getElementById('settings-org-id').value    = orgId();
   document.getElementById('settings-api-base').value  = document.getElementById('api-base-input').value;
   document.getElementById('settings-app-url').value   = window.location.origin + '/app';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// API SPEC
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function uploadOpenAPISpec() {
+  const fileInput = document.getElementById('api-spec-input');
+  const status    = document.getElementById('api-spec-upload-status');
+  if (!fileInput.files.length) { toast('Select a JSON file first.'); return; }
+  const form = new FormData();
+  form.append('file', fileInput.files[0]);
+  status.innerHTML = '<span class="spinner"></span> Uploading…';
+  try {
+    const res  = await fetch(api('/upload_openapi_spec'), { method: 'POST', body: form });
+    const text = await res.text();
+    if (res.ok) {
+      status.textContent = '✓ Spec uploaded and reloaded';
+      toast('OpenAPI spec updated!');
+      fileInput.value = '';
+    } else {
+      status.textContent = '✗ ' + text;
+      toast('Upload failed.', true);
+    }
+  } catch (e) {
+    status.textContent = '✗ Network error';
+    toast('Upload failed.', true);
+  }
+}
+
+function downloadOpenAPISpec() {
+  const a = document.createElement('a');
+  a.href = api('/download_openapi_spec');
+  a.download = 'openapi_spec.json';
+  a.click();
 }
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────

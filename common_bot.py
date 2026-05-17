@@ -23,6 +23,12 @@ from utils.prompts import *
 from utils.web_processor import url_filter_agent
 from utils.whatsapp_utills import send_message
 from utils.miscellaneous import parse_services, get_uncompleted, get_consultant_conversation
+from utils.api_node import (
+    openai_tools, build_api_summary,
+    identify_api_and_params, get_tool_info,
+    extract_pending_params, ask_for_missing_params,
+    simulate_api_call, format_api_response,
+)
 
 from zoneinfo import ZoneInfo
 
@@ -59,6 +65,7 @@ consultation_mode_chain = consultant_switch_prompt_template | llm | StrOutputPar
 consutalnt_session_extraction_chain = consultant_conv_data_extractor_prompt_template | llm | JsonOutputParser()
 validation_chain = question_validator_prompt_template | llm | JsonOutputParser()
 knowledge_classifier = kb_classifier_prompt | llm | StrOutputParser()
+api_route_chain = api_route_prompt_template | llm | StrOutputParser()
 
 
 def analyse_consultant_conversation(chat_history, service_info):
@@ -144,6 +151,19 @@ def detect_general_question(chat_history, user_input, service_info):
     })
 
     return result == "yes"
+
+
+def detect_api_call(chat_history, user_input: str) -> bool:
+    """
+    Returns True if the user input requires a backend API call
+    (e.g. check balance, activate / cancel package, view current plan).
+    """
+    result = api_route_chain.invoke({
+        "chat_history": chat_history,
+        "user_input": user_input,
+        "api_summary": build_api_summary(),
+    })
+    return result.strip().lower() == "yes"
 
 
 def call_qa_agent(state):
@@ -232,7 +252,10 @@ def router_node(state):
 
     if not state['consultant_mode']:
         if state['valid_question']:
-            if not detect_general_question(chat_history, user_input, service_info):
+            api_session = state.get('api_session', {})
+            if api_session.get('pending_call') or detect_api_call(chat_history, user_input):
+                next_node = "api_agent"
+            elif not detect_general_question(chat_history, user_input, service_info):
                 next_node = "booking_agent"
             else:
                 next_node = "qa_agent"
@@ -409,6 +432,90 @@ def qa_agent_node(state):
     return state
 
 
+def api_agent_node(state):
+    chat_history = state['chat_history']
+    user_input = state['user_input']
+    api_session = state.get('api_session', {})
+
+    pending = api_session.get('pending_call')
+
+    if pending:
+        # Continue multi-turn parameter collection for a previously identified API call
+        tool_name = pending['tool_name']
+        collected_params = pending['collected_params'].copy()
+        required_params = pending['required_params']
+
+        tool_info = get_tool_info(tool_name)
+        operation_desc = tool_info.get('description', tool_name)
+        missing_params = [p for p in required_params if not collected_params.get(p)]
+
+        try:
+            new_params = extract_pending_params(
+                user_input, chat_history, missing_params,
+                collected_params, operation_desc
+            )
+        except Exception as e:
+            logger.debug(f"api_agent param extraction error: {e}")
+            new_params = {}
+
+        for key, val in new_params.items():
+            if val is not None:
+                collected_params[key] = val
+
+        pending['collected_params'] = collected_params
+        still_missing = [p for p in required_params if not collected_params.get(p)]
+
+        if still_missing:
+            response = ask_for_missing_params(
+                still_missing, collected_params, chat_history,
+                operation_desc, tool_info.get('param_descriptions', {})
+            )
+        else:
+            api_result = simulate_api_call(tool_name, collected_params)
+            logger.debug(f"api_agent call: {tool_name}, params: {collected_params}, result: {api_result}")
+            response = format_api_response(tool_name, api_result, chat_history, user_input)
+            api_session.pop('pending_call', None)
+
+    else:
+        # Fresh detection: use LLM function calling to identify operation and extract params
+        result = identify_api_and_params(chat_history, user_input)
+        tool_name = result['tool_name']
+        extracted_params = result['extracted_params']
+
+        if not tool_name:
+            # Could not map to an API — fall back to QA
+            response = result['data_request'] # call_qa_agent(state)
+        else:
+            tool_info = get_tool_info(tool_name)
+            operation_desc = tool_info.get('description', tool_name)
+            required_params = tool_info.get('required_params', [])
+            missing = [p for p in required_params if not extracted_params.get(p)]
+
+            if missing:
+                response = ask_for_missing_params(
+                    missing, extracted_params, chat_history,
+                    operation_desc, tool_info.get('param_descriptions', {})
+                )
+                api_session['pending_call'] = {
+                    'tool_name': tool_name,
+                    'collected_params': extracted_params,
+                    'required_params': required_params,
+                }
+            else:
+                # NOTE : attach a external API service
+                api_result = simulate_api_call(tool_name, extracted_params)
+                logger.debug(f"api_agent call: {tool_name}, params: {extracted_params}, result: {api_result}")
+                response = format_api_response(tool_name, api_result, chat_history, user_input)
+
+    state['api_session'] = api_session
+    state['chat_history'] = chat_history + [
+        HumanMessage(content=user_input, additional_kwargs={"time_stamp": state['time_stamp']}),
+        AIMessage(content=response, additional_kwargs={"time_stamp": state['time_stamp']}),
+    ]
+    state['bot_responce'] = response
+    return state
+
+
 def escalation_agent(state):
     user_input = state['user_input']
     chat_history = state['chat_history']
@@ -557,6 +664,7 @@ class ServiceState(dict):
     consultant_mode: bool
     valid_question: bool
     validation_response: str
+    api_session: dict
 
 
 def common_chatbot():
@@ -565,6 +673,7 @@ def common_chatbot():
     graph.add_node("router", router_node)
     graph.add_node("qa_agent", qa_agent_node)
     graph.add_node("booking_agent", booking_agent_node)
+    graph.add_node("api_agent", api_agent_node)
     graph.add_node("escalation_check", escalation_agent_node)
     graph.add_node("consultant_agent", consultant_agent_node)
     graph.add_node("end_node", end_node)
@@ -579,6 +688,7 @@ def common_chatbot():
         {
             "qa_agent": "qa_agent",
             "booking_agent": "booking_agent",
+            "api_agent": "api_agent",
             "consultant": "consultant_agent",
             "end": "end_node"
         },
@@ -586,6 +696,7 @@ def common_chatbot():
 
     graph.add_edge("qa_agent", "escalation_check")
     graph.add_edge("booking_agent", "escalation_check")
+    graph.add_edge("api_agent", END)
 
     graph.add_conditional_edges(
         "escalation_check",
@@ -604,6 +715,6 @@ def common_chatbot():
 if __name__ == "__main__":
     app = common_chatbot()
     image_bytes = app.get_graph().draw_mermaid_png()
-    with open("graph.png", "wb") as f:
+    with open("graph__.png", "wb") as f:
         f.write(image_bytes)
     print("Saved to graph.png")
