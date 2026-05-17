@@ -32,8 +32,12 @@ llm = ChatOpenAI(
 
 _SPEC_PATH = pathlib.Path(__file__).parent.parent / "openapi_spec.json"
 
-with open(_SPEC_PATH, "r") as _f:
-    openapi_spec: dict = json.load(_f)
+try:
+    with open(_SPEC_PATH, "r") as _f:
+        openapi_spec: dict = json.load(_f)
+except FileNotFoundError:
+    logger.warning("openapi_spec.json not found — API node running without a spec")
+    openapi_spec: dict = {}
 
 
 def openapi_to_tools(spec: dict) -> list:
@@ -94,10 +98,14 @@ openai_tools: list = openapi_to_tools(openapi_spec)
 def reload_spec() -> None:
     """Re-reads openapi_spec.json from disk and rebuilds the tools list in-place."""
     global openapi_spec, openai_tools
-    with open(_SPEC_PATH, "r") as _f:
-        openapi_spec = json.load(_f)
-    openai_tools = openapi_to_tools(openapi_spec)
-    logger.info("OpenAPI spec reloaded from disk")
+    try:
+        with open(_SPEC_PATH, "r") as _f:
+            openapi_spec = json.load(_f)
+        openai_tools = openapi_to_tools(openapi_spec)
+        logger.info("OpenAPI spec reloaded from disk")
+    except FileNotFoundError:
+        logger.warning("openapi_spec.json not found — spec not reloaded")
+
 
 
 def build_api_summary(spec: dict = openapi_spec) -> str:
@@ -139,8 +147,7 @@ def get_tool_info(tool_name: str, tools: list = openai_tools) -> dict:
 # LLM-based API identification via function calling
 # ---------------------------------------------------------------------------
 
-def identify_api_and_params(chat_history: list, user_input: str,
-                             tools: list = openai_tools) -> dict:
+def identify_api_and_params(chat_history: list, user_input: str) -> dict:
     """
     Uses LLM function calling to identify which API operation the user wants
     and extract whatever parameters are already available in the conversation.
@@ -148,7 +155,7 @@ def identify_api_and_params(chat_history: list, user_input: str,
     """
     from langchain_core.messages import HumanMessage
 
-    llm_with_tools = llm.bind_tools(tools)
+    llm_with_tools = llm.bind_tools(openai_tools)
     messages = chat_history + [HumanMessage(content=user_input)]
     response = llm_with_tools.invoke(messages)
 
