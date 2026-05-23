@@ -266,18 +266,35 @@ Keep your response concise and helpful.
 
 def simulate_api_call(tool_name: str, params: dict) -> dict:
     """Returns a simulated API response. Replace with real HTTP calls in production."""
+
     dummy: dict = {
         "getDataBalance": {
             "status": "success",
             "customer_id": params.get("customer_id", "N/A"),
             "device_id": params.get("deviceId", "N/A"),
             "balances": [
-                {"package": "Main Data Balance", "value": 15.5, "unit": "GB", "expiry": "2026-05-30"},
-                {"package": "Bonus Data",         "value": 2.0,  "unit": "GB", "expiry": "2026-05-20"},
-                {"package": "Night Data",          "value": 50.0, "unit": "GB", "expiry": "2026-05-31"},
+                {
+                    "package": "Main Data Balance",
+                    "value": 15.5,
+                    "unit": "GB",
+                    "expiry": "2026-05-30"
+                },
+                {
+                    "package": "Bonus Data",
+                    "value": 2.0,
+                    "unit": "GB",
+                    "expiry": "2026-05-20"
+                },
+                {
+                    "package": "Night Data",
+                    "value": 50.0,
+                    "unit": "GB",
+                    "expiry": "2026-05-31"
+                },
             ],
             "total_remaining_gb": 67.5,
         },
+
         "activatePackage": {
             "status": "success",
             "customer_id": params.get("customer_id", "N/A"),
@@ -287,6 +304,7 @@ def simulate_api_call(tool_name: str, params: dict) -> dict:
             "validity": "30 days",
             "reference_no": "ACT-2026-0516-7842",
         },
+
         "cancelPackage": {
             "status": "success",
             "customer_id": params.get("customer_id", "N/A"),
@@ -295,6 +313,7 @@ def simulate_api_call(tool_name: str, params: dict) -> dict:
             "reference_no": "CAN-2026-0516-3301",
             "effective_date": "End of current billing cycle (2026-05-31)",
         },
+
         "getCurrentPlan": {
             "status": "success",
             "customer_id": params.get("customer_id", "N/A"),
@@ -306,6 +325,23 @@ def simulate_api_call(tool_name: str, params: dict) -> dict:
             "account_status": "Active",
             "next_billing_date": "2026-06-01",
         },
+
+        "payBill": {
+            "status": "success",
+            "account_number": params.get("account_number", "N/A"),
+            "total_payable_amount": params.get("total_payable_amount", "N/A"),
+            "transaction_id": "PAY-2026-0523-9981",
+            "payment_status": "Completed",
+            "payment_method": "Credit Card",
+            "payment_date": "2026-05-23 14:45:00",
+            "message": "Bill payment completed successfully."
+        },
     }
 
-    return dummy.get(tool_name, {"status": "success", "message": "Operation completed successfully."})
+    return dummy.get(
+        tool_name,
+        {
+            "status": "success",
+            "message": "Operation completed successfully."
+        }
+    )

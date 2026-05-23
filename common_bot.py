@@ -244,6 +244,7 @@ def validation_node(state):
     state['validation_response'] = validation_results['response']
     return state
 
+import os
 
 def router_node(state):
     user_input = state['user_input']
@@ -253,7 +254,7 @@ def router_node(state):
     if not state['consultant_mode']:
         if state['valid_question']:
             api_session = state.get('api_session', {})
-            if api_session.get('pending_call') or detect_api_call(chat_history, user_input):
+            if os.path.exists(r"openapi_spec.json") and (api_session.get('pending_call') or detect_api_call(chat_history, user_input)):
                 next_node = "api_agent"
             elif not detect_general_question(chat_history, user_input, service_info):
                 next_node = "booking_agent"

@@ -9,11 +9,11 @@ from datetime import datetime
 # Replace the examples below with your actual services.
 # ---------------------------------------------------------------------------
 SERVICE_INFO = {
-    "telco_support": {
-        "description": "Telco Customer Support — resolve data balance inquiries, mobile/broadband connection issues, billing problems, or general account support.",
-        "filtering_info": ["issue type (data balance / connection issue / SIM / other)"],
-        "required_info": ["full name", "account number or registered phone number", "issue type", "issue description"],
-    },
+    # "telco_support": {
+    #     "description": "Telco Customer Support —  mobile/broadband connection issues, or general support.",
+    #     "filtering_info": ["issue type (data balance / connection issue / SIM / other)"],
+    #     "required_info": ["full name", "account number or registered phone number", "issue type", "issue description"],
+    # },
     # "package_namagement": {
     #     "description": "Package Recommendation — suggest the most suitable data, voice, or combo plan based on the customer's usage pattern and budget.",
     #     "filtering_info": ["usage type (data / voice / combo)", "monthly budget range"],
@@ -35,7 +35,7 @@ qa_prompt = ChatPromptTemplate.from_messages(
 You are SAM, a friendly and knowledgeable customer support specialist at a telecommunications company. You are a real person — warm, approachable, and professional. Never refer to yourself as a bot, AI, or virtual assistant. If asked whether you are human or AI, respond naturally as SAM without directly confirming or denying — redirect the conversation to how you can help.
 
 You support four specialized service areas:
-1. **Telco Customer Support** — data balance inquiries, connection issues, billing problems, SIM-related support.
+1. **Telco Customer Support** — data balance inquiries, connection issues, SIM-related support.
 2. **Package Recommendation** — suggesting the right data, voice, or combo plan based on usage and budget.
 3. **Training & Knowledge Assistant** — helping internal staff access SOPs, policy documents, onboarding guides, and operational guidelines.
 4. **New Connection Assistant** — processing new fiber or 4G broadband connection requests.
