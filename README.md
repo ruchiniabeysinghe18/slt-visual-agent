@@ -30,6 +30,13 @@ A web-based AI customer support chatbot built with FastAPI, LangGraph, OpenAI an
 
 The `.env` file and Google Cloud service credentials (.json) are provided, place them 
 in the `slt-visual-agent` folder
+
+**Note** : whatsapp feature will only work if you configure a meta developer account and create a
+access token and use it in the `.env` file.
+unlike other API keys, free version of the whasapp access Key is avaialble only fpr one hour, so we cant provide it for demonstration.
+Also make sure to add a working whatsapp number in `AGENTS` section in the `.env` file
+
+refer : https://developers.facebook.com/documentation/business-messaging/whatsapp/get-started
 ---
 
 ## Docker Deployment (Recomended)
