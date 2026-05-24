@@ -28,7 +28,7 @@ A web-based AI customer support chatbot built with FastAPI, LangGraph, OpenAI an
 
 ## Credentials
 
-The `.env` file and Google Cloud service credentials (.json) are provided, place them 
+The `.env` file and Google Cloud service credentials (.json) are provided in the `credentials` folder, place them 
 in the `slt-visual-agent` folder
 
 **Note** : whatsapp feature will only work if you configure a meta developer account and create a
@@ -37,6 +37,13 @@ unlike other API keys, free version of the whasapp access Key is avaialble only 
 Also make sure to add a working whatsapp number in `AGENTS` section in the `.env` file
 
 refer : https://developers.facebook.com/documentation/business-messaging/whatsapp/get-started
+---
+
+## External dummy API
+
+To use with the External API intergration we provide the open API specificaiton file
+`openapi_spec.json` , you can use it dorectly to upload to the system (refer the demo video : `external_api_intigration.mp4`)
+
 ---
 
 ## Docker Deployment (Recomended)
